@@ -1,5 +1,4 @@
 import re
-
 output = """
                                        mohh@SERENiTY
  MMMMMMMMMMMMMMMMMMMMMMMMMmds+.        OS: Mint 19 tara
@@ -23,9 +22,22 @@ output = """
 
 def sysinfo_scrape(output):
     """Scrapes the output from screenfetch and returns a dictionary"""
+    lines = []
     for line in output.split('\n'):
-        print(re.findall(r'([A-Za-x]+\s[A-Za-x]+:\s[a-zA-Z|\d].*)|(([A-Za-z]+):\s[a-zA-Z|\d].*)', r'{}'.format(line)))
+        lines.append(re.findall(r'\s\s\s[A-Za-x]+\s[A-Za-x]+:\s[a-zA-Z|\d].*', r'{}'.format(line)))
+        lines.append(
+           re.findall(r'\s\s\s[A-Za-z]+:\s[a-zA-Z|\d].*', r'{}'.format(line)))
+        lines.append(re.findall(r'[A-Za-x]+@[A-Za-x]+', r'{}'.format(line)))
+    lines = [x[0] for x in lines if x != []]
+    answer = {}
+    for item in lines:
+        if re.findall(r'[A-Za-x]+@[A-Za-x]+', r'{}'.format(item)) != []:
+            answer['Name'] = item
+        else:
+            item = item.split(': ')
+            answer[item[0][3:]] = item[1]
+    return answer
 
 
-sysinfo_scrape(output)
 
+print(sysinfo_scrape(output))

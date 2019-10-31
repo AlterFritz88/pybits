@@ -19,19 +19,17 @@ def romanize(decimal_number):
         raise ValueError
     ans = ''
     while decimal_number > 0:
-        stop = 0
         for n, k in enumerate(nums.keys()):
             if decimal_number - k < 0:
                 ans += nums[list(nums.keys())[n-1]]
                 decimal_number -= list(nums.keys())[n-1]
-                stop = 1
                 break
 
 
-        if n == 12 and stop == 0:
+        if n == 12:
             ans += 'M'
             decimal_number -= 1000
 
     return ans
 
-print(romanize(3500))
+print(romanize(177))

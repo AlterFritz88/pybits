@@ -1,52 +1,65 @@
-text = """
-The Zen of Python, by Tim Peters
+"""Checks community branch dir structure to see who submitted most
+   and what challenge is more popular by number of PRs"""
+from collections import Counter, namedtuple
+import os
+import urllib.request
 
-Beautiful is better than ugly.
-Explicit is better than implicit.
-Simple is better than complex.
-Complex is better than complicated.
-Flat is better than nested.
-Sparse is better than dense.
-Readability counts.
-Special cases aren't special enough to break the rules.
-Although practicality beats purity.
-Errors should never pass silently.
-Unless explicitly silenced.
-In the face of ambiguity, refuse the temptation to guess.
-There should be one-- and preferably only one --obvious way to do it.
-Although that way may not be obvious at first unless you're Dutch.
-Now is better than never.
-Although never is often better than *right* now.
-If the implementation is hard to explain, it's a bad idea.
-If the implementation is easy to explain, it may be a good idea.
-Namespaces are one honking great idea -- let's do more of those!
-"""
+# prep
 
-text = """Hello world! We hope that you are learning a lot of Python. Have fun with our Bites of Py. Keep calm and code in Python! Become a PyBites ninja!"""
-vowels = 'aeiou'
+tempfile = os.path.join('tmp', 'dirnames')
+urllib.request.urlretrieve('http://bit.ly/2ABUTjv', tempfile)
+
+IGNORE = 'static templates data pybites bbelderbos hobojoe1848'.split()
+
+users, popular_challenges = Counter(), Counter()
+
+Stats = namedtuple('Stats', 'user challenge')
 
 
-def strip_vowels(text: str) -> (str, int):
-    """Replace all vowels in the input text string by a star
-       character (*).
-       Return a tuple of (replaced_text, number_of_vowels_found)
+# code
 
-       So if this function is called like:
-       strip_vowels('hello world')
+def gen_files():
+    """Return a generator of dir names reading in tempfile
 
-       ... it would return:
-       ('h*ll* w*rld', 3)
+       tempfile has this format:
 
-       The str/int types in the function defintion above are part
-       of Python's new type hinting:
-       https://docs.python.org/3/library/typing.html"""
-    counter = 0
-    new_text = ''
-    for i in text:
-        if i.lower() in vowels:
-            counter += 1
-            new_text += '*'
-        else:
-            new_text += i
-    return (new_text, counter)
-print(strip_vowels(text))
+       challenge<int>/file_or_dir<str>,is_dir<bool>
+       03/rss.xml,False
+       03/tags.html,False
+       ...
+       03/mridubhatnagar,True
+       03/aleksandarknezevic,True
+
+       -> use last column to filter out directories (= True)
+    """
+    with open(tempfile, 'r') as f:
+        for line in f:
+            temp_line = line.strip().split(',')
+            if temp_line[1] == 'True':
+                dir = temp_line[0].split('/')
+                yield dir[1]
+
+def diehard_pybites():
+    """Return a Stats namedtuple (defined above) that contains the user that
+       made the most PRs (ignoring the users in IGNORE) and a challenge tuple
+       of most popular challenge and the amount of PRs for that challenge.
+       Calling this function on the dataset (held tempfile) should return:
+       Stats(user='clamytoe', challenge=('01', 7))
+    """
+    for i in list(gen_files()):
+        if i not in IGNORE:
+            users[i] += 1
+
+    top_user = users.most_common(1)[0][0]
+
+    dirs = list(gen_files())
+    with open(tempfile, 'r') as f:
+        for line in f:
+            temp_line = line.strip().split(',')[0].split('/')
+            if temp_line[1] in dirs:
+                popular_challenges[temp_line[0]] += 1
+    pop_chel = popular_challenges.most_common(1)[0]
+    return Stats(top_user, pop_chel)
+
+print(list(gen_files()))
+print(diehard_pybites())

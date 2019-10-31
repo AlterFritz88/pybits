@@ -35,7 +35,7 @@ NOT_FOUND = 'N/A'
 def get_every_nth_state(states=states, n=10):
     """Return a list with every nth item (default argument n=10, so every
        10th item) of the states list above (remember: lists keep order)"""
-    return [y for x, y in enumerate(states) if (x+1) % n == 0]
+    return [y for x, y in enumerate(states) if (x+1)%n == 0]
 
 
 def get_state_abbrev(state_name, us_state_abbrev=us_state_abbrev):
@@ -44,17 +44,15 @@ def get_state_abbrev(state_name, us_state_abbrev=us_state_abbrev):
        'Illinois' returns 'IL'.
        If the state is not in the dict, return 'N/A' which we stored
        in the NOT_FOUND constant (takeaway: dicts are great for lookups)"""
-    try:
-        return us_state_abbrev[state_name]
-    except:
-        return NOT_FOUND
+    return us_state_abbrev.get(state_name, NOT_FOUND)
 
 
 def get_longest_state(data):
     """Receives data, which can be the us_state_abbrev dict or the states
        list (see above). It returns the longest state measured by the length
        of the string"""
-    pass
+    return sorted(data, key= lambda x:len(x), reverse=True)[0]
+
 
 
 def combine_state_names_and_abbreviations(us_state_abbrev=us_state_abbrev,
@@ -63,7 +61,9 @@ def combine_state_names_and_abbreviations(us_state_abbrev=us_state_abbrev,
        the us_state_abbrev dict, and the last 10 states from the states
        list (see above) and combine them into a new list without losing
        alphabetical order"""
-    pass
+    return sorted(list(us_state_abbrev.values()))[:10] + sorted(states)[-10:]
 
-#print(get_every_nth_state(states, 20))
-print(get_state_abbrev('Illinois'))
+print(get_every_nth_state())
+print(get_state_abbrev('North Dakota'))
+print(get_longest_state(states))
+print(combine_state_names_and_abbreviations())
