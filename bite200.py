@@ -28,7 +28,9 @@ class Enchantment:
         id_name, name, max_level, description, items
     """
 
-    def __init__(self, id_name, name, max_level, decription, items):
+    def __init__(self, id_name, name, max_level, decription, items=None):
+        if items is None:
+            items = []
         self.id_name = id_name
         self.name = " ".join([x.capitalize() if x != 'of' else x for x in name.split(" ") ])
         self.max_level = max_level
@@ -50,13 +52,14 @@ class Item:
         if items is None:
             items = []
         self.name = name
-        self.enchantments = sorted(items, key=lambda x: x.id_name)
+        self.enchantments = items
 
 
     def __str__(self):
         answer_str = ""
-        answer_str += " ".join([x.capitalize() for x in self.name.split(" ")]) + ":\n"
-        for i, item in enumerate(self.enchantments):
+        answer_str += " ".join([x.capitalize() for x in self.name.split("_")]) + ": \n"
+        for_show = sorted(self.enchantments, key=lambda x: x.id_name)
+        for i, item in enumerate(for_show):
             if i != len(self.enchantments) - 1:
                 answer_str += f"  [{item.max_level}] {item.id_name}\n"
             else:

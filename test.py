@@ -1,118 +1,296 @@
-from datetime import datetime, date
-from unittest.mock import patch
-
 import pytest
 
-from bite50 import (_convert_struct_time_to_dt, get_feed_entries,
-                    filter_entries_by_tag, main, Entry)
+from bite200 import (
+    Enchantment,
+    Item,
+    generate_items,
+    get_soup,
+    generate_enchantments,
+)
+
+mock_html = """
+<table id="minecraft_items" class="std_table">
+<tr>
+<th data-search="1" width="175">Enchantment<br>(<em>Minecraft ID Name</em>)</th>
+<th data-search="1">Max Level</th>
+<th class="hidden-xs">Description</th>
+<th data-search="1"><span class="hidden-xs">Minecraft </span>ID</th>
+<th class="hidden-xs">Items</th>
+<th>Version</th>
+</tr>
+<tr>
+<td><a href="/enchantments/aqua_affinity.php">Aqua Affinity</a><br>(<em>aqua_<wbr>affinity</em>)</td>
+<td>I</td>
+<td class="hidden-xs">Speeds up how fast you can mine blocks underwater</td>
+<td>6</td>
+<td class="hidden-xs"><img class="img-rounded b-lazy" src="/images/thumbnail_loading.gif" data-src="/armor_recipes/images/enchanted_iron_helmet.png" alt="aqua affinity" width="40" height="40"></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="/enchantments/bane_of_arthropods.php">Bane of Arthropods</a><br>(<em>bane_<wbr>of_<wbr>arthropods</em>)</td>
+<td>V</td>
+<td class="hidden-xs">Increases attack damage against arthropods</td>
+<td>18</td>
+<td class="hidden-xs"><img class="img-rounded b-lazy" src="/images/thumbnail_loading.gif" data-src="/enchantments/images/sword_axe_sm.png" alt="bane of arthropods" width="40" height="40"></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="/enchantments/blast_protection.php">Blast Protection</a><br>(<em>blast_<wbr>protection</em>)</td>
+<td>IV</td>
+<td class="hidden-xs">Reduces blast and explosion damage</td>
+<td>3</td>
+<td class="hidden-xs"><img class="img-rounded b-lazy" src="/images/thumbnail_loading.gif" data-src="/enchantments/images/armor_sm.png" alt="blast protection" width="40" height="40"></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="/enchantments/channeling.php">Channeling</a><br>(<em>channeling</em>)</td>
+<td>I</td>
+<td class="hidden-xs">Summons a lightning bolt at a targeted mob when enchanted item is thrown (targeted mob must be standing in raining)</td>
+<td>68</td>
+<td class="hidden-xs"><img class="img-rounded b-lazy" src="/images/thumbnail_loading.gif" data-src="/weapon_recipes/images/enchanted_trident.png" alt="channeling" width="40" height="40"></td>
+<td>1.13</td>
+</tr>
+</table>
+"""
 
 
-class AttrDict(dict):
-    """feedparser lets you access dict keys as attributes, hence a bit of
-       mocking, got this from https://stackoverflow.com/a/14620633"""
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
+@pytest.fixture(scope="module")
+def enchantment_mock():
+    enchant = Enchantment(
+        "python_developer",
+        "Python Developer",
+        10,
+        "Ability automate really boring and repetitive tasks at work",
+    )
+    return enchant
 
 
-dt1 = datetime(2018, 2, 18, 19, 52, 0).timetuple()
-dt2 = datetime(2017, 1, 6, 11, 0, 0).timetuple()
-
-MOCK_ENTRIES = {'entries':
-                [AttrDict({'author': 'PyBites',
-                           'link':
-                           'https://pybit.es/twitter_digest_201808.html',  # noqa E501
-                           'published': 'Sun, 18 Feb 2018 20:52:00 +0100',  # noqa E501
-                           'published_parsed': dt1,
-                           'summary': '<p>Every weekend we share ...',
-                           'tags': [AttrDict({'term': 'twitter'}),
-                                    AttrDict({'term': 'Flask'}),
-                                    AttrDict({'term': 'Python'}),
-                                    AttrDict({'term': 'Regex'})],
-                           'title': 'Twitter Digest 2018 Week 08'}),
-                 AttrDict({'author': 'Julian',
-                           'link': 'https://pybit.es/pyperclip.html',
-                           'published': 'Fri, 06 Jan 2017 12:00:00 +0100',  # noqa E501
-                           'published_parsed': dt2,
-                           'summary': '<p>Use the Pyperclip module to ...',
-                           'tags': [AttrDict({'term': 'python'}),
-                                    AttrDict({'term': 'tips'}),
-                                    AttrDict({'term': 'tricks'}),
-                                    AttrDict({'term': 'code'}),
-                                    AttrDict({'term': 'pybites'})],
-                           'title': 'Copy and Paste with Pyperclip'})]}
+@pytest.fixture(scope="module")
+def item_mock(enchantment_mock):
+    item = Item("clamytoe")
+    return item
 
 
-@pytest.mark.parametrize("arg, ret", [
-    (datetime(2017, 9, 12, 8, 50, 0).timetuple(),
-     date(year=2017, month=9, day=12)),
-    (datetime(2017, 9, 8, 14, 30, 0).timetuple(),
-     date(year=2017, month=9, day=8)),
-    (datetime(2016, 12, 19, 9, 26, 0).timetuple(),
-     date(year=2016, month=12, day=19)),
-])
-def test_convert_struct_time_to_dt(arg, ret):
-    assert _convert_struct_time_to_dt(arg) == ret
+@pytest.fixture(scope="module")
+def mock_soup():
+    return get_soup(mock_html)
 
 
-@patch("feedparser.parse", side_effect=[MOCK_ENTRIES])
-def test_get_feed_entries(inp):
-    first, last = tuple(get_feed_entries())
-
-    assert first.date == date(year=2018, month=2, day=18)
-    assert first.title == 'Twitter Digest 2018 Week 08'
-    assert first.link == 'https://pybit.es/twitter_digest_201808.html'
-    expected = ['flask', 'python', 'regex', 'twitter']
-    # allow list or set
-    assert sorted(list(first.tags)) == expected
-
-    assert last.date == date(year=2017, month=1, day=6)
-    assert last.title == 'Copy and Paste with Pyperclip'
-    assert last.link == 'https://pybit.es/pyperclip.html'
-    expected = ['code', 'pybites', 'python', 'tips', 'tricks']
-    assert sorted(list(last.tags)) == expected
+@pytest.fixture(scope="module")
+def mock_data(mock_soup):
+    return generate_enchantments(mock_soup)
 
 
-@pytest.mark.parametrize("arg, ret", [
-    ('blabla', False),
-    ('tricks', True),
-    ('TRICKS', True),  # case should not matter
-    ('TriCkS', True),
-    ('python', False),  # whole term only so python != pythonic
-    ('matplotlib&pandas', True),
-    ('matplotlib&pandas&collections', True),
-    ('matplotlib&pandas&flask', False),
-    ('matplotlib|flask', True),
-    ('matplotlib|django|flask', True),
-    ('pyramid|django|flask', False),
-])
-def test_filter_entries_by_tag(arg, ret):
-    entry = Entry(date=date(2016, 12, 22),
-                  title='2016 py articles and useful books',
-                  link='https://pybit.es/py-articles-books2016.html',
-                  tags={'pythonic', 'data science',
-                        'tips', 'tricks', 'matplotlib',
-                        'pandas', 'books', 'collections'})
-    assert filter_entries_by_tag(arg, entry) is ret
+@pytest.fixture(scope="module")
+def mocked_generate_items(mock_data):
+    return generate_items(mock_data)
 
 
-@patch("feedparser.parse", side_effect=[MOCK_ENTRIES])
-@patch("builtins.input", side_effect=['pycon', 'twitter', 'python', 'nonsense',
-                                      'python|regex', 'python&regex', 'REGeX',
-                                      '', 'q'])
-def test_main(entries, inp, capfd):
-    main()
-    out, _ = capfd.readouterr()
+@pytest.fixture(scope="module")
+def coders_dataset():
+    soup = get_soup()
+    mc_data = generate_enchantments(soup)
+    items = generate_items(mc_data)
+    return items
 
-    output = [line for line in out.split('\n') if line.strip()]
-    expected = ['0 entries matched', 'Twitter Digest 2018 Week 08',
-                '1 entry matched', 'Copy and Paste with Pyperclip',
-                'Twitter Digest 2018 Week 08', '2 entries matched',
-                '0 entries matched', 'Copy and Paste with Pyperclip',
-                'Twitter Digest 2018 Week 08', '2 entries matched',
-                'Twitter Digest 2018 Week 08', '1 entry matched',
-                'Twitter Digest 2018 Week 08', '1 entry matched',
-                'Please provide a search term', 'Bye']
-    print(output)
-    for line, exp in zip(output, expected):
-        assert exp in line
+#
+# def test_enchantment_class(enchantment_mock):
+#     assert enchantment_mock.name == "Python Developer"
+#     assert enchantment_mock.items == []
+#
+#
+# def test_enchantment_class_add_items(enchantment_mock, item_mock):
+#     enchantment_mock.items.append(item_mock.name)
+#     assert len(enchantment_mock.items) == 1
+#     bob = Item("bob")
+#     enchantment_mock.items.append(bob.name)
+#     assert len(enchantment_mock.items) == 2
+#     assert enchantment_mock.items == ["clamytoe", "bob"]
+#     assert enchantment_mock.max_level == 10
+
+
+# def test_enchantment_class_print(enchantment_mock, capfd):
+#     print(enchantment_mock)
+#     output = capfd.readouterr()[0].split("\n")[0]
+#     assert (
+#         output
+#         == "Python Developer (10): Ability automate really boring and repetitive tasks at work"
+#     )
+
+#
+# def test_item_class(item_mock, enchantment_mock):
+#     item_mock.enchantments.append(enchantment_mock)
+#     assert item_mock.enchantments[0].name == "Python Developer"
+#
+
+def test_item_class_print(item_mock, capfd):
+    print(item_mock)
+    output = capfd.readouterr()[0].strip()
+    assert output == "Clamytoe: \n  [10] python_developer"
+
+#
+# def test_enchantment_print(mock_data, capfd):
+#     print(mock_data["channeling"])
+#     output = capfd.readouterr()[0].split("\n")[0]
+#     assert (
+#         output
+#         == "Channeling (1): Summons a lightning bolt at a targeted mob when enchanted item is thrown (targeted mob must be standing in raining)"
+#     )
+#
+#
+# @pytest.mark.parametrize(
+#     "enchant, expected",
+#     [
+#         ("aqua_affinity", 1),
+#         ("bane_of_arthropods", 5),
+#         ("blast_protection", 4),
+#         ("channeling", 1),
+#     ],
+# )
+# def test_roman_numeral_conversion(mock_data, enchant, expected):
+#     assert mock_data[enchant].max_level == expected
+#
+#
+# def test_generate_enchantments_with_mock(mock_data):
+#     assert isinstance(mock_data, dict)
+#     assert len(mock_data.keys()) == 4
+#     assert (
+#         mock_data["channeling"].description
+#         == "Summons a lightning bolt at a targeted mob when enchanted item is thrown (targeted mob must be standing in raining)"
+#     )
+#
+#
+# def test_generate_enchantments_from_source():
+#     soup = get_soup()
+#     data = generate_enchantments(soup)
+#     assert len(data.keys()) == 37
+#     assert data["efficiency"].max_level == 5
+#
+#
+# @pytest.mark.parametrize(
+#     "item, expected",
+#     [
+#         ("armor", "Blast Protection"),
+#         ("axe", "Bane of Arthropods"),
+#         ("helmet", "Aqua Affinity"),
+#         ("sword", "Bane of Arthropods"),
+#         ("trident", "Channeling"),
+#     ],
+# )
+# def test_gen_items_mocked(mocked_generate_items, item, expected):
+#     assert mocked_generate_items[item].enchantments[0].name == expected
+#
+#
+# @pytest.mark.parametrize(
+#     "item, expected",
+#     [
+#         (
+#             "armor",
+#             [
+#                 "blast_protection",
+#                 "binding_curse",
+#                 "fire_protection",
+#                 "projectile_protection",
+#                 "protection",
+#                 "thorns",
+#             ],
+#         ),
+#         (
+#             "axe",
+#             [
+#                 "bane_of_arthropods",
+#                 "efficiency",
+#                 "fortune",
+#                 "sharpness",
+#                 "silk_touch",
+#                 "smite",
+#             ],
+#         ),
+#         ("boots", ["depth_strider", "feather_falling", "frost_walker"]),
+#         ("bow", ["flame", "infinity", "power", "punch"]),
+#         ("chestplate", ["vanishing_curse", "mending", "unbreaking"]),
+#         ("crossbow", ["multishot", "piercing", "quick_charge"]),
+#         (
+#             "fishing_rod",
+#             ["vanishing_curse", "luck_of_the_sea", "lure", "mending", "unbreaking"],
+#         ),
+#         ("helmet", ["aqua_affinity", "respiration"]),
+#         (
+#             "pickaxe",
+#             [
+#                 "vanishing_curse",
+#                 "efficiency",
+#                 "fortune",
+#                 "mending",
+#                 "silk_touch",
+#                 "unbreaking",
+#             ],
+#         ),
+#         ("shovel", ["efficiency", "fortune", "silk_touch"]),
+#         (
+#             "sword",
+#             [
+#                 "bane_of_arthropods",
+#                 "vanishing_curse",
+#                 "fire_aspect",
+#                 "knockback",
+#                 "looting",
+#                 "mending",
+#                 "sharpness",
+#                 "smite",
+#                 "sweeping",
+#                 "unbreaking",
+#             ],
+#         ),
+#         ("trident", ["channeling", "impaling", "loyalty", "riptide"]),
+#     ],
+# )
+# def test_gen_items(coders_dataset, item, expected):
+#     assert [enc.id_name for enc in coders_dataset[item].enchantments] == expected
+#
+#
+# @pytest.mark.parametrize(
+#     "item, expected",
+#     [
+#         (
+#             "armor",
+#             "Armor: \n  [1] binding_curse\n  [4] blast_protection\n  [4] fire_protection\n  [4] projectile_protection\n  [4] protection\n  [3] thorns",
+#         ),
+#         (
+#             "axe",
+#             "Axe: \n  [5] bane_of_arthropods\n  [5] efficiency\n  [3] fortune\n  [5] sharpness\n  [1] silk_touch\n  [5] smite",
+#         ),
+#         (
+#             "boots",
+#             "Boots: \n  [3] depth_strider\n  [4] feather_falling\n  [2] frost_walker",
+#         ),
+#         ("bow", "Bow: \n  [1] flame\n  [1] infinity\n  [5] power\n  [2] punch"),
+#         (
+#             "chestplate",
+#             "Chestplate: \n  [1] mending\n  [3] unbreaking\n  [1] vanishing_curse",
+#         ),
+#         ("crossbow", "Crossbow: \n  [1] multishot\n  [4] piercing\n  [3] quick_charge"),
+#         (
+#             "fishing_rod",
+#             "Fishing Rod: \n  [3] luck_of_the_sea\n  [3] lure\n  [1] mending\n  [3] unbreaking\n  [1] vanishing_curse",
+#         ),
+#         ("helmet", "Helmet: \n  [1] aqua_affinity\n  [3] respiration"),
+#         (
+#             "pickaxe",
+#             "Pickaxe: \n  [5] efficiency\n  [3] fortune\n  [1] mending\n  [1] silk_touch\n  [3] unbreaking\n  [1] vanishing_curse",
+#         ),
+#         ("shovel", "Shovel: \n  [5] efficiency\n  [3] fortune\n  [1] silk_touch"),
+#         (
+#             "sword",
+#             "Sword: \n  [5] bane_of_arthropods\n  [2] fire_aspect\n  [2] knockback\n  [3] looting\n  [1] mending\n  [5] sharpness\n  [5] smite\n  [3] sweeping\n  [3] unbreaking\n  [1] vanishing_curse",
+#         ),
+#         (
+#             "trident",
+#             "Trident: \n  [1] channeling\n  [5] impaling\n  [3] loyalty\n  [3] riptide",
+#         ),
+#     ],
+# )
+# def test_item_print(coders_dataset, item, expected, capfd):
+#     print(coders_dataset[item])
+#     output = capfd.readouterr()[0].strip()
+#     assert output == expected
