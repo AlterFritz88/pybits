@@ -14,6 +14,8 @@ def get_signs(data: list) -> List[Sign]:
         famous_people = sign['famous_people']
         sun_dates = sign['sun_dates']
         sign = Sign(name, compatibility, famous_people, sun_dates)
+
+        print(type(sign))
         ret.append(
             sign
         )
@@ -76,6 +78,9 @@ def signs():
     return get_signs(data)
 
 
+def test_data(signs):
+    assert type(signs[0]).__name__ == "Sign"
+
 def test_most_famous(signs):
     assert ('Scorpio', 35) == get_sign_with_most_famous_people(signs)
 
@@ -87,7 +92,26 @@ def test_sign_comp_1(signs):
 def test_sign_comp_2(signs):
     assert signs_are_mutually_compatible(signs, "Aries", "Aquarius")
 
+def test_sign_comp_3(signs):
+    assert signs_are_mutually_compatible(signs, "Aquarius", "Aries")
 
-def test_date(signs):
-    date = datetime.strptime("30/03/06 16:30", "%d/%m/%y %H:%M")
+
+def test_date_1(signs):
+    date = datetime.strptime("30/03/06 00:00", "%d/%m/%y %H:%M")
     assert "Aries" == get_sign_by_date(signs, date)
+
+def test_date_2(signs):
+    date = datetime.strptime("21/03/06 00:00", "%d/%m/%y %H:%M")
+    assert "Aries" == get_sign_by_date(signs, date)
+
+def test_date_3(signs):
+    date = datetime.strptime("19/04/06 00:00", "%d/%m/%y %H:%M")
+    assert "Aries" == get_sign_by_date(signs, date)
+
+def test_date_4(signs):
+    date = datetime.strptime("20/03/06 00:00", "%d/%m/%y %H:%M")
+    assert 'Pisces' == get_sign_by_date(signs, date)
+
+def test_date_5(signs):
+    date = datetime.strptime("20/04/06 00:00", "%d/%m/%y %H:%M")
+    assert "Taurus" == get_sign_by_date(signs, date)
